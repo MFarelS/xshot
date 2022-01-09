@@ -1,0 +1,425 @@
+#!/usr/bin/env bash
+# xshot automatic screenshots
+# coded by D_baj
+
+# clors
+o='\033[0m'
+r='\033[1;31m'
+b='\033[1;36m'
+bx='\033[2;7;36m'
+w='\033[1;37m'
+y='\033[1;33m'
+g='\033[1;32m'
+N=$w'['$y'~'$w'] '
+P=$w'['$y'?'$w'] '
+W=$w'['$r'!'$w'] '
+S=$w'['$g'✓'$w'] '
+I=$w'['$r'*'$w'] '
+B=$w'['$y'+'$w']'
+
+## variables
+
+# PATH
+
+CAMERA_PATH="/sdcard/dcim/camera"
+SCREENSHOT_PATH="/sdcard/dcim/screenshots"
+BACKUP_PATH="/sdcard/dcim/Backup_screenshot"
+
+# BORDER
+
+BORDER_SIZE=50
+BORDER_SIZE_S=10
+BORDER_COLOR_DARK="#3d465c"
+#BORDER_COLOR_DARK="#39876c"
+BORDER_COLOR_LIGHT="#ABB2BF"
+#BORDER_COLOR_LIGHT="#a3ed34"
+
+# SHADOW
+
+SHADOW_SIZE="85x10+0+10"
+SHADOW_COLOR="#000000"
+
+# FOOTER
+
+FOOTER_TEXT_CAMERA=" 
+SHOT BY REDMI 9C
+AI QUAD CAMERA"
+#FOOTER_ICON_CAMERA="
+# ﱣﱤ
+#ﱤﱤ"
+FOOTER_ICON_CAMERA=""
+FOOTER_TEXT=" Shot by Xshot"
+FOOTER_XY="+0+30"
+FOOTER_XY_TIME="+0+30"
+FOOTER_XY_TEXT_CAMERA="+240+85"
+FOOTER_XY_ICON_CAMERA="+50+30"
+FOOTER_XY_DATE_CAMERA="+50+40"
+FOOTER_SIZE_TIME=15
+FOOTER_SIZE=20
+FOOTER_SIZE_ICON_CAMERA=200
+FOOTER_SIZE_TEXT_CAMERA=50
+FOOTER_SIZE_TIME_CAMERA=50
+FOOTER_SIZE_TIME_STAM=60
+FOOTER_COLOR="#000000"
+FOOTER_COLOR_TEXT_CAMERA="#e6e6e6"
+FOOTER_COLOR_ICON_CAMERA="#38d13e"
+
+USAGE=( "$2" "$3" "$4")
+COUNT=1
+
+#function magick
+run1() {
+  convert ${FILE} \
+    -alpha set -virtual-pixel transparent \
+    -channel A -blur 0x14  -threshold 80% +channel \
+    -bordercolor "${BORDER_COLOR}" -border ${BORDER_SIZE_S} \
+    ${FILE}
+
+}
+run() {
+    convert ${FILE} \
+      -alpha set -virtual-pixel transparent \
+      -channel A -blur 0x14  -threshold 80% +channel \
+      \( +clone -background "${SHADOW_COLOR}" \
+      -shadow ${SHADOW_SIZE} \) \
+      +swap -background none -layers merge +repage \
+      -bordercolor "${BORDER_COLOR}" -border ${BORDER_SIZE} \
+      ${FILE}
+      if [[ ${FOOTER_INFO} = "Yes" ]]; then
+        footer
+      fi
+}
+rounded() {
+  BORDER_RADIUS="15"
+  convert ${FILE} \
+    \( +clone -alpha extract -draw \
+    "fill black polygon 0,0,0,${BORDER_RADIUS} ${BORDER_RADIUS},0 fill white circle ${BORDER_RADIUS},${BORDER_RADIUS},${BORDER_RADIUS},0" \
+    \( +clone -flip \) -compose Multiply -composite \
+    \( +clone -flop \) -compose Multiply -composite \
+    \) \
+    -alpha off -compose CopyOpacity -composite ${FILE}
+}
+footer(){
+  FOOTER_TIME=" $(date +'%a %d.%h.%Y')  $(date +'%H:%M')"
+
+  convert ${FILE} \
+      -gravity South -background none \
+      -font JetBrains-Mono-Medium-Nerd-Font-Complete \
+      -pointsize ${FOOTER_SIZE} \
+      -fill ${FOOTER_COLOR} \
+      -annotate ${FOOTER_XY} "${FOOTER_TEXT}" \
+      -gravity North -background none \
+      -pointsize ${FOOTER_SIZE_TIME} \
+      -annotate ${FOOTER_XY_TIME} "${FOOTER_TIME}" \
+      ${FILE}
+}
+
+watermark() {
+  FOOTER_TIME=" $(date +'%a %d.%h.%Y')  $(date +'%H:%M')"
+   convert $FILE \
+     -gravity SouthWest -background none \
+     -font JetBrains-Mono-Medium-Nerd-Font-Complete \
+     -pointsize $FOOTER_SIZE_ICON_CAMERA \
+     -fill $FOOTER_COLOR_ICON_CAMERA \
+     -annotate $FOOTER_XY_ICON_CAMERA "${FOOTER_ICON_CAMERA}" \
+     -pointsize $FOOTER_SIZE_TEXT_CAMERA \
+     -fill $FOOTER_COLOR_TEXT_CAMERA \
+     -annotate $FOOTER_XY_TEXT_CAMERA "${FOOTER_TEXT_CAMERA}" \
+     -gravity SouthEast -background none \
+     -pointsize $FOOTER_SIZE_TIME_CAMERA \
+     -annotate $FOOTER_XY_DATE_CAMERA "${FOOTER_TIME}" \
+     $FILE
+}
+stamDate() {
+  FOOTER_TIME=" $(date +'%H:%M')
+ $(date +'%a %d.%h.%Y')"
+  convert $FILE \
+    -gravity SouthEast -background none \
+    -font JetBrains-Mono-Medium-Nerd-Font-Complete \
+    -pointsize $FOOTER_SIZE_TIME_STAM \
+    -fill $FOOTER_COLOR_TEXT_CAMERA \
+    -annotate $FOOTER_XY_DATE_CAMERA "${FOOTER_TIME}" \
+    $FILE
+}
+#function main
+#title () {
+#  printf "\n\b\r\033[2K***${1}\n" | sed 's/*/ /g'
+#}
+
+log () {
+  echo -e "${w}[${y}$(date +'%H:%M:%S')${w}] $@"
+}
+
+header() {
+  echo -e " ${w}
+
+                      XSHOT V.0.2
+${g}${B}${g}───────────────────────${w}[${y}${COUNT}${w}]${g}──────────────────────${B}
+${B} TYPE : ${TYPE}
+
+                        EXECUTE
+"
+}
+check() {
+  if [[ $? -eq 0 && ${PIPESTATUS[0]} -eq 0 ]]; then
+    echo -e "${g}Done"
+  else
+    echo -e "${r}Failed"
+  fi
+}
+autoshot() {
+  clear
+  header
+  echo -e "    $(log)${w}Waiting new file ..."
+  inotifywait -m -e create $DIR_PATH 2> /dev/null | \
+    while read FILENAME; do
+        main
+    done
+}
+
+manual() {
+  clear
+  header
+  while(true); do
+    main
+  done
+  
+}
+help() {
+  echo "  Usage:
+    xshot [options1] [options2] [file path]
+
+  Options1 :
+
+    -h        show help 
+    -a        autoshot ( Auto detect new file )
+    -m        manual
+    -c        add watermark to image 
+
+  Options2 :
+
+    -l        light border without footer text
+    -lf       light border with footer text
+    -d        dark border without footer text
+    -df       dark border with footer text
+
+  Example:
+    
+    xshot -a -d =  autoshot with dark mode without footer text
+    xshot -a -df = autoshot with dark mode with footer text
+    xshot -m -lf [file path] = manual shot with light mode footer text"
+}
+
+main() {
+  COUNT=$(( ${COUNT} + 1 ))
+  if [[ $TYPE = "AUTOSHOT" ]]; then
+    cd $SCREENSHOT_PATH
+    FILE=$(find $SCREENSHOT_PATH | sort -r | head | sed -n 1p | sed 's .\{25\}  ')
+  elif [[ $TYPE = "CAMERA WATERMARK" ]]; then
+    cd $CAMERA_PATH
+    FILE=$(find $CAMERA_PATH | sort -r | head | sed -n 1p | sed 's .\{20\}  ')
+  elif [[ $TYPE = "MANUAL SHOT" ]]; then
+    read -p $'    \033[1;37m[\033[1;33m?\033[1;37m] PLEASE INPUT FILE PATH : ' FILE
+  elif [[ $TYPE = "CAMERA TIME STAMP" ]]; then
+    cd $CAMERA_PATH
+    FILE=$(find $CAMERA_PATH | sort -r | head | sed -n 1p | sed 's .\{20\}  ')
+  fi
+  echo -e "    $(log)Find file .... $(check)"
+  echo -e "    $(log)Found file ${FILE} $(check)"
+  echo -e "    $(log)Converting ...."
+ if [[ $TYPE = "CAMERA WATERMARK" ]]; then
+   watermark
+ elif [[ $TYPE = "CAMERA TIME STAMP" ]]; then
+   stamDate
+ else
+   if [[ $EXTRA_COMAND = "Yes" ]]; then
+     run1
+     run
+   else
+     run
+   fi
+ fi
+ if [[ $? -eq 0 && ${PIPESTATUS[0]} -eq 0 ]]; then
+ echo -e "    $(log)${g}Done$(sleep 1s)
+ "
+ echo -e "${g}${B}${g}────────────────────────────────────────────────${B}
+
+                       ${w}DETAILS
+
+    ${N}${w} TYPE      : ${TYPE}
+    ${N}${w} FILE ORI  : ${FILE}
+    ${N}${w} MODE      : ${MODE}
+    ${N}${w} FOOTER    : ${FOOTER_INFO}
+    ${N}${w} OUTPUT    : ${FILE}
+    ${N}${w} FILE PATH : 
+
+  ${DIR_PATH}/${FILE}
+
+${g}${B}${g}───────────────────────${w}[${y}${COUNT}${w}]${g}──────────────────────${B}
+   "
+   if [[ $TYPE = "MANUAL SHOT" ]]; then
+     echo ""
+   else
+     echo -e "    $(log)${w}Waiting new file ..."
+   fi
+else
+  echo -e "    $(log)${r}Failed"
+  echo -e "${g}${B}${g}───────────────────────${w}[${y}${COUNT}${w}]${g}──────────────────────${B}"
+  if [[ $TYPE = "MANUAL SHOT" ]]; then
+    echo ""
+  else
+    echo -e "    $(log)${w}Waiting new file ..."
+  fi
+fi
+
+}
+
+if [[ $1 =~ "-a" ]]; then
+   TYPE="AUTOSHOT"
+   DIR_PATH=${SCREENSHOT_PATH}
+elif [[ $1 =~ "-m" ]]; then
+   TYPE="MANUAL SHOT"
+   DIR_PATH=${FILE}
+elif [[ $1 =~ "-c" ]]; then
+   TYPE="CAMERA WATERMARK"
+   DIR_PATH=${CAMERA_PATH}
+elif [[ $1 =~ "-t" ]]; then
+   TYPE="CAMERA TIME STAMP"
+   DIR_PATH=${CAMERA_PATH}
+fi
+
+case $1 in
+  "" )
+    help
+  ;;
+
+  -a )
+    case $2 in
+      -d )
+        BORDER_COLOR+="${BORDER_COLOR_DARK}"
+        MODE="DARK"
+        FOOTER_INFO="No"
+        autoshot
+        ;;
+
+      -df )
+        BORDER_COLOR+="${BORDER_COLOR_DARK}"
+        MODE="DARK"
+        FOOTER_INFO="Yes"
+        autoshot
+        ;;
+
+      -l )
+        BORDER_COLOR+="${BORDER_COLOR_LIGHT}"
+        MODE="LIGHT"
+        FOOTER_INFO="No"
+        autoshot
+        ;;
+
+      -lf )
+        BORDER_COLOR+="${BORDER_COLOR_LIGHT}"
+        MODE="LIGHT"
+        FOOTER_INFO="Yes"
+        autoshot
+        ;;
+
+      -lx )
+        BORDER_COLOR+="${BORDER_COLOR_LIGHT}"
+        MODE="LIGHT"
+        FOOTER_INFO="No"
+        EXTRA_COMAND="Yes"
+        autoshot
+        ;;
+
+      -lfx )
+        BORDER_COLOR+="${BORDER_COLOR_LIGHT}"
+        MODE="LIGHT"
+        FOOTER_INFO="Yes"
+        EXTRA_COMAND="Yes"
+        autoshot
+        ;;
+
+      -dx )
+        BORDER_COLOR+="${BORDER_COLOR_DARK}"
+        MODE="DARK"
+        FOOTER_INFO="No"
+        EXTRA_COMAND="Yes"
+        autoshot
+        ;;
+
+      -dfx )
+        BORDER_COLOR+="${BORDER_COLOR_DARK}"
+        MODE="DARK"
+        FOOTER_INFO="Yes"
+        EXTRA_COMAND="Yes"
+        autoshot
+        ;;
+
+       "" )
+        help
+        ;;
+    
+    esac
+
+  ;;
+
+  -m )
+    FILE="$3"
+    case $2 in
+      -d )
+        BORDER_COLOR+="${BORDER_COLOR_DARK}"
+        MODE="DARK"
+        FOOTER_INFO="No"
+        manual
+        ;;
+
+      -df )
+        BORDER_COLOR+="${BORDER_COLOR_DARK}"
+        MODE="DARK"
+        FOOTER_INFO="Yes"
+        manual
+        ;;
+
+      -l )
+        BORDER_COLOR+="${BORDER_COLOR_LIGHT}"
+        MODE="LIGHT"
+        FOOTER_INFO="No"
+        manual
+        ;;
+
+      -lf )
+        BORDER_COLOR+="${BORDER_COLOR_LIGHT}"
+        MODE="LIGHT"
+        FOOTER_INFO="Yes"
+        manual
+        ;;
+
+      "" )
+        help
+        ;;
+
+      esac
+      ;;
+
+  -c )
+    FOOTER_INFO="Yes"
+    MODE="-"
+    autoshot
+  ;;
+  -t )
+    FOOTER_INFO="Yes"
+    MODE="-"
+    autoshot
+  ;;
+  -h )
+    help
+  ;;
+
+  -i )
+    info
+  ;;
+
+  * )
+    help
+
+esac 
