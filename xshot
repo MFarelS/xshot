@@ -22,7 +22,7 @@ B=$w'['$y'+'$w']'
 # PATH
 
 CAMERA_PATH="/sdcard/dcim/camera"
-SCREENSHOT_PATH="/sdcard/dcim/screenshots"
+SCREENSHOT_PATH="/sdcard/dcim/screenshots" #edit path screenshot
 BACKUP_PATH="/sdcard/dcim/Backup_screenshot"
 
 # BORDER
